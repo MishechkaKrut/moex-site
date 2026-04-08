@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Биржевой Курс Доллара к Рублю</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        .rate {
+            font-size: 2.5em;
+            color: #27ae60;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .date {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Текущий Курс Доллара к Рублю на Мосбирже</h1>
+        
+        {# Jinja2 синтаксис для условного отображения #}
+        {% if error_message %}
+            <p class="error">{{ error_message }}</p>
+            <p>Пожалуйста, попробуйте обновить страницу позже.</p>
+        {% else %}
+            <p>Последняя цена на Мосбирже на {{ last_updated }}:</p>
+            <p class="rate">1 USD = {{ usd_rub_rate }} RUB</p>
+        {% endif %}
+        
+        <p class="date">Данные предоставлены через <a href="https://github.com/moexalgo/moexalgo" target="_blank">moexalgo</a></p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <!-- Кодировка и заголовок страницы -->
+    <meta charset="UTF-8">
+    <title>MOEX Dashboard</title>
+
+    <style>
+        /* ===== Общие стили страницы ===== */
+        body {
+            font-family: Inter, Arial;
+            background:#f4f6f8;
+            margin:0;
+            padding-top:50px; /* отступ под фиксированную бегущую строку */
+        }
+
+        /* ===== Бегущая строка с котировками ===== */
+        .ticker-wrapper {
+            position:fixed;
+            top:0;
+            width:100%;
+            height:44px;
+            background:#0f172a;
+            overflow:hidden;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
+
+        .ticker {
+            display:flex;
+            align-items:center;
+            animation:scroll 25s linear infinite;
+        }
+
+        .ticker-item {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:0 30px;
+            color:#e5e7eb;
+        }
+
+        .ticker-name {
+            font-weight:600;
+            margin-right:8px;
+        }
+
+        .ticker-price {
+            color:#22c55e;
+        }
+
+        /* Анимация бесконечной прокрутки */
+        @keyframes scroll {
+            from { transform:translateX(0); }
+            to   { transform:translateX(-50%); }
+        }
+
+        /* ===== Карточка портфеля ===== */
+        .card {
+            background:white;
+            width:480px;
+            margin:40px auto;
+            padding:25px;
+            border-radius:14px;
+            box-shadow:0 10px 30px rgba(0,0,0,.08);
+        }
+
+        /* Общие стили форм */
+        input, button {
+            width:100%;
+            padding:10px;
+            margin-top:8px;
+            font-size:15px;
+            border-radius:8px;
+            border:1px solid #ccc;
+        }
+
+        button {
+            background:#2563eb;
+            color:white;
+            border:none;
+            cursor:pointer;
+        }
+
+        /* Таблица портфеля */
+        table {
+            width:100%;
+            margin-top:20px;
+            border-collapse:collapse;
+        }
+
+        th, td {
+            padding:8px;
+            border-bottom:1px solid #e5e7eb;
+            text-align:center;
+        }
+
+        /* Итоговая сумма */
+        .total {
+            margin-top:15px;
+            font-weight:bold;
+            text-align:right;
+        }
+
+        /* Сообщения */
+        h3 {
+            margin-top:15px;
+            text-align:center;
+            color:#2563eb;
+        }
+
+        .error {
+            color:#dc2626;
+            text-align:center;
+            margin-top:10px;
+        }
+
+        /* ===== Автопоиск тикеров ===== */
+        .suggestions {
+            position:absolute;
+            background:white;
+            border:1px solid #ccc;
+            width:100%;
+            max-height:150px;
+            overflow-y:auto;
+            z-index:100;
+            list-style:none;
+            padding:0;
+            margin:0;
+        }
+
+        .suggestions li {
+            padding:8px;
+            cursor:pointer;
+        }
+
+        .suggestions li:hover {
+            background:#f1f5f9;
+        }
+
+        .search-box {
+            position:relative;
+            margin-bottom:10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- ===== Бегущая строка с котировками MOEX ===== -->
+<!-- Данные приходят с бэкенда через переменную ticker_tape -->
+<div class="ticker-wrapper">
+    <div class="ticker">
+        <!-- Первый проход — основные данные -->
+        {% for i in ticker_tape %}
+        <div class="ticker-item">
+            {{ i.ticker }}
+            <span class="ticker-price">{{ i.price }}</span>
+        </div>
+        {% endfor %}
+
+        <!-- Второй проход — нужен для эффекта бесконечной прокрутки -->
+        {% for i in ticker_tape %}
+        <div class="ticker-item">
+            {{ i.ticker }}
+            <span class="ticker-price">{{ i.price }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ===== Основная карточка приложения ===== -->
+<div class="card">
+
+    <!-- Заголовок -->
+    <h2>Портфель MOEX</h2>
+
+    <!-- ===== Форма проверки цены тикера ===== -->
+    <form method="post" class="search-box">
+        <input
+            id="check_ticker"
+            name="check_ticker"
+            placeholder="Введите тикер"
+            autocomplete="off"
+        >
+        <!-- Выпадающий список подсказок -->
+        <ul id="check_suggestions" class="suggestions"></ul>
+        <button>Узнать цену</button>
+    </form>
+
+    <!-- Результат проверки цены -->
+    {% if checked_ticker %}
+    <h3>Цена {{ checked_ticker }}: {{ checked_price }}</h3>
+    {% endif %}
+
+    <!-- Сообщение об ошибке -->
+    {% if error_message %}
+    <div class="error">{{ error_message }}</div>
+    {% endif %}
+
+    <!-- ===== Форма добавления актива в портфель ===== -->
+    <form method="post" class="search-box">
+        <input
+            id="add_ticker"
+            name="add_ticker"
+            placeholder="Тикер"
+            autocomplete="off"
+        >
+        <!-- Подсказки тикеров -->
+        <ul id="add_suggestions" class="suggestions"></ul>
+
+        <input name="add_qty" placeholder="Количество">
+        <button>Добавить в портфель</button>
+    </form>
+
+    <!-- ===== Таблица портфеля ===== -->
+    <table>
+        <tr>
+            <th>Тикер</th>
+            <th>Кол-во</th>
+            <th>Цена</th>
+            <th>Сумма</th>
+        </tr>
+
+        <!-- Строки портфеля -->
+        {% for r in portfolio %}
+        <tr>
+            <td>{{ r.ticker }}</td>
+            <td>{{ r.qty }}</td>
+            <td>{{ r.price }}</td>
+            <td>{{ r.value }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <!-- ===== Итоговая стоимость портфеля ===== -->
+    <div class="total">Итого: {{ total }}</div>
+</div>
+
+<!-- ===== JavaScript: автопоиск тикеров ===== -->
+<script>
+    // Универсальная функция автопоиска
+    function setupAutocomplete(inputId, listId) {
+        const input = document.getElementById(inputId);
+        const suggestions = document.getElementById(listId);
+
+        input.addEventListener("input", async () => {
+            suggestions.innerHTML = "";
+            const q = input.value.trim();
+            if (!q) return;
+
+            // Запрос к бэкенду для поиска тикеров
+            const res = await fetch(`/search?q=${q}`);
+            const data = await res.json();
+
+            // Отображение подсказок
+            data.forEach(t => {
+                const li = document.createElement("li");
+                li.textContent = t;
+                li.onclick = () => {
+                    input.value = t;
+                    suggestions.innerHTML = "";
+                };
+                suggestions.appendChild(li);
+            });
+        });
+    }
+
+    // Инициализация автопоиска для двух полей
+    setupAutocomplete("check_ticker", "check_suggestions");
+    setupAutocomplete("add_ticker", "add_suggestions");
+</script>
+
+</body>
+</html>
