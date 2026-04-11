@@ -1,20 +1,17 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- Кодировка и заголовок страницы -->
     <meta charset="UTF-8">
     <title>MOEX Dashboard</title>
 
     <style>
-        /* ===== Общие стили страницы ===== */
         body {
             font-family: Inter, Arial;
             background:#f4f6f8;
             margin:0;
-            padding-top:50px; /* отступ под фиксированную бегущую строку */
+            padding-top:50px;
         }
 
-        /* ===== Бегущая строка с котировками ===== */
         .ticker-wrapper {
             position:fixed;
             top:0;
@@ -41,22 +38,15 @@
             color:#e5e7eb;
         }
 
-        .ticker-name {
-            font-weight:600;
-            margin-right:8px;
-        }
-
         .ticker-price {
             color:#22c55e;
         }
 
-        /* Анимация бесконечной прокрутки */
         @keyframes scroll {
             from { transform:translateX(0); }
             to   { transform:translateX(-50%); }
         }
 
-        /* ===== Карточка портфеля ===== */
         .card {
             background:white;
             width:480px;
@@ -66,7 +56,6 @@
             box-shadow:0 10px 30px rgba(0,0,0,.08);
         }
 
-        /* Общие стили форм */
         input, button {
             width:100%;
             padding:10px;
@@ -83,7 +72,6 @@
             cursor:pointer;
         }
 
-        /* Таблица портфеля */
         table {
             width:100%;
             margin-top:20px;
@@ -96,14 +84,12 @@
             text-align:center;
         }
 
-        /* Итоговая сумма */
         .total {
             margin-top:15px;
             font-weight:bold;
             text-align:right;
         }
 
-        /* Сообщения */
         h3 {
             margin-top:15px;
             text-align:center;
@@ -116,7 +102,6 @@
             margin-top:10px;
         }
 
-        /* ===== Автопоиск тикеров ===== */
         .suggestions {
             position:absolute;
             background:white;
@@ -143,16 +128,36 @@
             position:relative;
             margin-bottom:10px;
         }
+
+        /* ===== РЕКЛАМА ===== */
+        .ad-box {
+            margin-top:20px;
+            text-align:center;
+        }
+
+        .ad-button {
+            display:inline-block;
+            margin-top:8px;
+            padding:12px 18px;
+            background:#22c55e;
+            color:white;
+            border-radius:10px;
+            text-decoration:none;
+            font-weight:600;
+            box-shadow:0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .ad-label {
+            font-size:12px;
+            color:#9ca3af;
+        }
     </style>
 </head>
 
 <body>
 
-<!-- ===== Бегущая строка с котировками MOEX ===== -->
-<!-- Данные приходят с бэкенда через переменную ticker_tape -->
 <div class="ticker-wrapper">
     <div class="ticker">
-        <!-- Первый проход — основные данные -->
         {% for i in ticker_tape %}
         <div class="ticker-item">
             {{ i.ticker }}
@@ -160,7 +165,6 @@
         </div>
         {% endfor %}
 
-        <!-- Второй проход — нужен для эффекта бесконечной прокрутки -->
         {% for i in ticker_tape %}
         <div class="ticker-item">
             {{ i.ticker }}
@@ -170,51 +174,31 @@
     </div>
 </div>
 
-<!-- ===== Основная карточка приложения ===== -->
 <div class="card">
 
-    <!-- Заголовок -->
     <h2>Портфель MOEX</h2>
 
-    <!-- ===== Форма проверки цены тикера ===== -->
     <form method="post" class="search-box">
-        <input
-            id="check_ticker"
-            name="check_ticker"
-            placeholder="Введите тикер"
-            autocomplete="off"
-        >
-        <!-- Выпадающий список подсказок -->
+        <input id="check_ticker" name="check_ticker" placeholder="Введите тикер" autocomplete="off">
         <ul id="check_suggestions" class="suggestions"></ul>
         <button>Узнать цену</button>
     </form>
 
-    <!-- Результат проверки цены -->
     {% if checked_ticker %}
     <h3>Цена {{ checked_ticker }}: {{ checked_price }}</h3>
     {% endif %}
 
-    <!-- Сообщение об ошибке -->
     {% if error_message %}
     <div class="error">{{ error_message }}</div>
     {% endif %}
 
-    <!-- ===== Форма добавления актива в портфель ===== -->
     <form method="post" class="search-box">
-        <input
-            id="add_ticker"
-            name="add_ticker"
-            placeholder="Тикер"
-            autocomplete="off"
-        >
-        <!-- Подсказки тикеров -->
+        <input id="add_ticker" name="add_ticker" placeholder="Тикер" autocomplete="off">
         <ul id="add_suggestions" class="suggestions"></ul>
-
         <input name="add_qty" placeholder="Количество">
         <button>Добавить в портфель</button>
     </form>
 
-    <!-- ===== Таблица портфеля ===== -->
     <table>
         <tr>
             <th>Тикер</th>
@@ -223,7 +207,6 @@
             <th>Сумма</th>
         </tr>
 
-        <!-- Строки портфеля -->
         {% for r in portfolio %}
         <tr>
             <td>{{ r.ticker }}</td>
@@ -234,13 +217,20 @@
         {% endfor %}
     </table>
 
-    <!-- ===== Итоговая стоимость портфеля ===== -->
     <div class="total">Итого: {{ total }}</div>
+
+    <!-- ===== РЕКЛАМА ===== -->
+    <div class="ad-box">
+        <div class="ad-label">Реклама</div>
+
+        <a href="https://angel-help.ru/" target="_blank" class="ad-button">
+            🚀 Попробовать Angel Help
+        </a>
+    </div>
+
 </div>
 
-<!-- ===== JavaScript: автопоиск тикеров ===== -->
 <script>
-    // Универсальная функция автопоиска
     function setupAutocomplete(inputId, listId) {
         const input = document.getElementById(inputId);
         const suggestions = document.getElementById(listId);
@@ -250,11 +240,9 @@
             const q = input.value.trim();
             if (!q) return;
 
-            // Запрос к бэкенду для поиска тикеров
             const res = await fetch(`/search?q=${q}`);
             const data = await res.json();
 
-            // Отображение подсказок
             data.forEach(t => {
                 const li = document.createElement("li");
                 li.textContent = t;
@@ -267,7 +255,6 @@
         });
     }
 
-    // Инициализация автопоиска для двух полей
     setupAutocomplete("check_ticker", "check_suggestions");
     setupAutocomplete("add_ticker", "add_suggestions");
 </script>
