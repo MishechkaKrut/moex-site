@@ -1,247 +1,90 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>MOEX Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOEX Dashboard</title>
 
-    <style>
-        body {
-            font-family: Inter, Arial;
-            background:#f4f6f8;
-            margin:0;
-            padding-top:50px;
-        }
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        .ticker-wrapper {
-            position:fixed;
-            top:0;
-            width:100%;
-            height:44px;
-            background:#0f172a;
-            overflow:hidden;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-        }
-
-        .ticker {
-            display:flex;
-            align-items:center;
-            animation:scroll 25s linear infinite;
-        }
-
-        .ticker-item {
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:0 30px;
-            color:#e5e7eb;
-        }
-
-        .ticker-price {
-            color:#22c55e;
-        }
-
-        @keyframes scroll {
-            from { transform:translateX(0); }
-            to   { transform:translateX(-50%); }
-        }
-
-        .card {
-            background:white;
-            width:480px;
-            margin:40px auto;
-            padding:25px;
-            border-radius:14px;
-            box-shadow:0 10px 30px rgba(0,0,0,.08);
-        }
-
-        input, button {
-            width:100%;
-            padding:10px;
-            margin-top:8px;
-            font-size:15px;
-            border-radius:8px;
-            border:1px solid #ccc;
-        }
-
-        button {
-            background:#2563eb;
-            color:white;
-            border:none;
-            cursor:pointer;
-        }
-
-        table {
-            width:100%;
-            margin-top:20px;
-            border-collapse:collapse;
-        }
-
-        th, td {
-            padding:8px;
-            border-bottom:1px solid #e5e7eb;
-            text-align:center;
-        }
-
-        .total {
-            margin-top:15px;
-            font-weight:bold;
-            text-align:right;
-        }
-
-        h3 {
-            margin-top:15px;
-            text-align:center;
-            color:#2563eb;
-        }
-
-        .error {
-            color:#dc2626;
-            text-align:center;
-            margin-top:10px;
-        }
-
-        .suggestions {
-            position:absolute;
-            background:white;
-            border:1px solid #ccc;
-            width:100%;
-            max-height:150px;
-            overflow-y:auto;
-            z-index:100;
-            list-style:none;
-            padding:0;
-            margin:0;
-        }
-
-        .suggestions li {
-            padding:8px;
-            cursor:pointer;
-        }
-
-        .suggestions li:hover {
-            background:#f1f5f9;
-        }
-
-        .search-box {
-            position:relative;
-            margin-bottom:10px;
-        }
-    </style>
+<style>
+body { font-family: Arial; background:#f4f6f8; }
+.card { background:white; padding:20px; max-width:500px; margin:auto; }
+.green { color:green; }
+.red { color:red; }
+</style>
 </head>
 
 <body>
 
-<div class="ticker-wrapper">
-    <div class="ticker">
-        {% for i in ticker_tape %}
-        <div class="ticker-item">
-            {{ i.ticker }}
-            <span class="ticker-price">{{ i.price }}</span>
-        </div>
-        {% endfor %}
-
-        {% for i in ticker_tape %}
-        <div class="ticker-item">
-            {{ i.ticker }}
-            <span class="ticker-price">{{ i.price }}</span>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
 <div class="card">
 
-    <h2>Портфель MOEX</h2>
+<h2>📊 MOEX Портфель</h2>
 
-    <form method="post" class="search-box">
-        <input id="check_ticker" name="check_ticker" placeholder="Введите тикер" autocomplete="off">
-        <ul id="check_suggestions" class="suggestions"></ul>
-        <button>Узнать цену</button>
-    </form>
+<div style="text-align:center;">
+<a href="https://angel-help.ru/" target="_blank">
+<img src="https://via.placeholder.com/468x120?text=Angel+Help" style="width:100%;">
+</a>
+</div>
 
-    {% if checked_ticker %}
-    <h3>Цена {{ checked_ticker }}: {{ checked_price }}</h3>
-    {% endif %}
+<form method="post">
+<input name="check_ticker" placeholder="Тикер">
+<button>Показать график</button>
+</form>
 
-    {% if error_message %}
-    <div class="error">{{ error_message }}</div>
-    {% endif %}
+<canvas id="chart"></canvas>
 
-    <form method="post" class="search-box">
-        <input id="add_ticker" name="add_ticker" placeholder="Тикер" autocomplete="off">
-        <ul id="add_suggestions" class="suggestions"></ul>
-        <input name="add_qty" placeholder="Количество">
-        <button>Добавить в портфель</button>
-    </form>
+<table border="1" width="100%">
+<tr><th>Тикер</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr>
 
-    <table>
-        <tr>
-            <th>Тикер</th>
-            <th>Кол-во</th>
-            <th>Цена</th>
-            <th>Сумма</th>
-        </tr>
+{% for r in portfolio %}
+<tr>
+<td>{{ r.ticker }}</td>
+<td>{{ r.qty }}</td>
+<td>{{ r.price }}</td>
+<td>{{ r.value }}</td>
+</tr>
+{% endfor %}
 
-        {% for r in portfolio %}
-        <tr>
-            <td>{{ r.ticker }}</td>
-            <td>{{ r.qty }}</td>
-            <td>{{ r.price }}</td>
-            <td>{{ r.value }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+</table>
 
-    <div class="total">Итого: {{ total }}</div>
+<div>Итого: {{ total }}</div>
 
-    <!-- ===== РЕКЛАМНЫЙ БАННЕР ===== -->
-    <div style="margin-top:20px;">
-        <div style="font-size:12px; color:#9ca3af; text-align:center;">
-            Реклама
-        </div>
-
-        <a href="https://angel-help.ru/" target="_blank">
-            <img src="https://via.placeholder.com/468x120?text=Angel+Help"
-                 style="
-                    width:100%;
-                    border-radius:12px;
-                    margin-top:8px;
-                    box-shadow:0 4px 15px rgba(0,0,0,0.1);
-                 ">
-        </a>
-    </div>
+<div>💰 Прибыль: <span id="profit"></span></div>
 
 </div>
 
 <script>
-    function setupAutocomplete(inputId, listId) {
-        const input = document.getElementById(inputId);
-        const suggestions = document.getElementById(listId);
+let chart;
 
-        input.addEventListener("input", async () => {
-            suggestions.innerHTML = "";
-            const q = input.value.trim();
-            if (!q) return;
+async function loadChart(ticker){
+    const res = await fetch(`/history/${ticker}`);
+    const data = await res.json();
 
-            const res = await fetch(`/search?q=${q}`);
-            const data = await res.json();
+    const labels = data.map(d => d.date);
+    const prices = data.map(d => d.price);
 
-            data.forEach(t => {
-                const li = document.createElement("li");
-                li.textContent = t;
-                li.onclick = () => {
-                    input.value = t;
-                    suggestions.innerHTML = "";
-                };
-                suggestions.appendChild(li);
-            });
-        });
+    if(chart) chart.destroy();
+
+    chart = new Chart(document.getElementById('chart'), {
+        type:'line',
+        data:{
+            labels:labels,
+            datasets:[{label:ticker, data:prices}]
+        }
+    });
+
+    if(prices.length > 1){
+        let change = ((prices.at(-1) - prices[0]) / prices[0] * 100).toFixed(2);
+        let el = document.getElementById("profit");
+        el.innerText = change + "%";
+        el.className = change >= 0 ? "green" : "red";
     }
+}
 
-    setupAutocomplete("check_ticker", "check_suggestions");
-    setupAutocomplete("add_ticker", "add_suggestions");
+{% if checked_ticker %}
+loadChart("{{ checked_ticker }}");
+{% endif %}
 </script>
 
 </body>
