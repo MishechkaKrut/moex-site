@@ -16,11 +16,10 @@ with open("moex_tickers.txt", encoding="utf-8") as f:
 
 # ---- кэш ----
 PRICE_CACHE = {}
-TICKER_CACHE = {"data": [], "ts": 0}
 CACHE_TTL = 60
 
 
-# ---- цена ----
+# ---------------- цена ----------------
 def get_price(ticker):
     now = time.time()
 
@@ -31,17 +30,14 @@ def get_price(ticker):
         return None
 
     try:
-        if ticker.startswith("SU"):
-            url = f"{MOEX_API}/history/engines/stock/markets/bonds/boards/TQOB/securities/{ticker}.json"
-        else:
-            url = f"{MOEX_API}/history/engines/stock/markets/shares/boards/TQBR/securities/{ticker}.json"
+        url = f"{MOEX_API}/history/engines/stock/markets/shares/boards/TQBR/securities/{ticker}.json"
 
         r = requests.get(url, params={
             "iss.only": "history",
             "sort_order": "desc",
             "sort_column": "TRADEDATE",
             "limit": 1
-        }, timeout=2)
+        }, timeout=3)
 
         data = r.json()
         df = pd.DataFrame(data["history"]["data"], columns=data["history"]["columns"])
@@ -50,6 +46,7 @@ def get_price(ticker):
             return None
 
         price = round(float(df.iloc[0]["CLOSE"]), 2)
+
         PRICE_CACHE[ticker] = {"price": price, "ts": now}
         return price
 
@@ -57,25 +54,7 @@ def get_price(ticker):
         return None
 
 
-# ---- тикер строка ----
-def get_ticker_tape():
-    now = time.time()
-
-    if now - TICKER_CACHE["ts"] < CACHE_TTL:
-        return TICKER_CACHE["data"]
-
-    result = []
-    for t in ALL_TICKERS[:8]:
-        p = get_price(t)
-        if p:
-            result.append({"ticker": t, "price": p})
-
-    TICKER_CACHE["data"] = result
-    TICKER_CACHE["ts"] = now
-    return result
-
-
-# ---- портфель ----
+# ---------------- портфель ----------------
 def load_portfolio():
     if not os.path.exists(PORTFOLIO_FILE):
         return {}
@@ -91,14 +70,14 @@ def save_portfolio(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-# ---- поиск ----
+# ---------------- поиск ----------------
 @app.route("/search")
 def search():
     q = request.args.get("q", "").upper()
     return jsonify([t for t in ALL_TICKERS if t.startswith(q)][:10])
 
 
-# ---- история для графика ----
+# ---------------- история графика ----------------
 @app.route("/history/<ticker>")
 def history(ticker):
     try:
@@ -126,29 +105,37 @@ def history(ticker):
         return jsonify([])
 
 
-# ---- главная ----
+# ---------------- главная ----------------
 @app.route("/", methods=["GET", "POST"])
 def index():
     portfolio = load_portfolio()
+
     checked_ticker = None
     checked_price = None
     error_message = None
 
     if request.method == "POST":
+        action = request.form.get("action")
 
-        if "check_ticker" in request.form:
-            checked_ticker = request.form.get("check_ticker").upper()
+        # 🔍 ПОИСК ЦЕНЫ (ФИКС)
+        if action == "check":
+            checked_ticker = request.form.get("check_ticker", "").upper().strip()
             checked_price = get_price(checked_ticker)
 
-        if "add_ticker" in request.form:
-            ticker = request.form.get("add_ticker").upper()
-            qty = request.form.get("add_qty")
+            if not checked_price:
+                error_message = "Тикер не найден"
+
+        # ➕ ДОБАВЛЕНИЕ
+        if action == "add":
+            ticker = request.form.get("add_ticker", "").upper().strip()
+            qty = request.form.get("add_qty", "0")
 
             if ticker in ALL_TICKERS and qty.isdigit():
                 portfolio[ticker] = portfolio.get(ticker, 0) + int(qty)
                 save_portfolio(portfolio)
                 return redirect("/")
 
+    # ---------------- портфель ----------------
     rows = []
     total = 0
 
@@ -168,8 +155,9 @@ def index():
         "index.html",
         portfolio=rows,
         total=round(total, 2),
-        ticker_tape=get_ticker_tape(),
-        checked_ticker=checked_ticker
+        checked_ticker=checked_ticker,
+        checked_price=checked_price,
+        error_message=error_message
     )
 
 
