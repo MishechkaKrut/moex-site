@@ -1,65 +1,91 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Биржевой Курс Доллара к Рублю</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            color: #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background-color: #fff;
-            padding: 30px 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-        }
-        p {
-            font-size: 1.2em;
-            margin-bottom: 10px;
-        }
-        .rate {
-            font-size: 2.5em;
-            color: #27ae60;
-            font-weight: bold;
-            margin: 20px 0;
-        }
-        .date {
-            font-size: 0.9em;
-            color: #7f8c8d;
-        }
-        .error {
-            color: #e74c3c;
-            font-weight: bold;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOEX Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body { font-family: Arial; background:#f4f6f8; }
+.card { background:white; padding:20px; max-width:500px; margin:auto; }
+.green { color:green; }
+.red { color:red; }
+</style>
 </head>
+
 <body>
-    <div class="container">
-        <h1>Текущий Курс Доллара к Рублю на Мосбирже</h1>
-        
-        {# Jinja2 синтаксис для условного отображения #}
-        {% if error_message %}
-            <p class="error">{{ error_message }}</p>
-            <p>Пожалуйста, попробуйте обновить страницу позже.</p>
-        {% else %}
-            <p>Последняя цена на Мосбирже на {{ last_updated }}:</p>
-            <p class="rate">1 USD = {{ usd_rub_rate }} RUB</p>
-        {% endif %}
-        
-        <p class="date">Данные предоставлены через <a href="https://github.com/moexalgo/moexalgo" target="_blank">moexalgo</a></p>
-    </div>
+
+<div class="card">
+
+<h2>📊 MOEX Портфель</h2>
+
+<div style="text-align:center;">
+<a href="https://angel-help.ru/" target="_blank">
+<img src="https://via.placeholder.com/468x120?text=Angel+Help" style="width:100%;">
+</a>
+</div>
+
+<form method="post">
+<input name="check_ticker" placeholder="Тикер">
+<button>Показать график</button>
+</form>
+
+<canvas id="chart"></canvas>
+
+<table border="1" width="100%">
+<tr><th>Тикер</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr>
+
+{% for r in portfolio %}
+<tr>
+<td>{{ r.ticker }}</td>
+<td>{{ r.qty }}</td>
+<td>{{ r.price }}</td>
+<td>{{ r.value }}</td>
+</tr>
+{% endfor %}
+
+</table>
+
+<div>Итого: {{ total }}</div>
+
+<div>💰 Прибыль: <span id="profit"></span></div>
+
+</div>
+
+<script>
+let chart;
+
+async function loadChart(ticker){
+    const res = await fetch(`/history/${ticker}`);
+    const data = await res.json();
+
+    const labels = data.map(d => d.date);
+    const prices = data.map(d => d.price);
+
+    if(chart) chart.destroy();
+
+    chart = new Chart(document.getElementById('chart'), {
+        type:'line',
+        data:{
+            labels:labels,
+            datasets:[{label:ticker, data:prices}]
+        }
+    });
+
+    if(prices.length > 1){
+        let change = ((prices.at(-1) - prices[0]) / prices[0] * 100).toFixed(2);
+        let el = document.getElementById("profit");
+        el.innerText = change + "%";
+        el.className = change >= 0 ? "green" : "red";
+    }
+}
+
+{% if checked_ticker %}
+loadChart("{{ checked_ticker }}");
+{% endif %}
+</script>
+
 </body>
 </html>
