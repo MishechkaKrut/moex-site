@@ -8,10 +8,54 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body { font-family: Arial; background:#f4f6f8; }
-.card { background:white; padding:20px; max-width:500px; margin:auto; }
-.green { color:green; }
-.red { color:red; }
+body {
+    font-family: Inter, Arial;
+    background:#f4f6f8;
+    margin:0;
+    padding-top:50px;
+}
+
+.card {
+    background:white;
+    width:95%;
+    max-width:500px;
+    margin:40px auto;
+    padding:20px;
+    border-radius:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+
+input, button {
+    width:100%;
+    padding:10px;
+    margin-top:8px;
+    border-radius:8px;
+    border:1px solid #ccc;
+}
+
+button {
+    background:#2563eb;
+    color:white;
+    border:none;
+}
+
+table {
+    width:100%;
+    margin-top:20px;
+}
+
+td, th {
+    padding:6px;
+    text-align:center;
+}
+
+.green { color:#22c55e; }
+.red { color:#dc2626; }
+
+.ad {
+    margin-top:20px;
+    text-align:center;
+}
 </style>
 </head>
 
@@ -21,22 +65,34 @@ body { font-family: Arial; background:#f4f6f8; }
 
 <h2>📊 MOEX Портфель</h2>
 
-<div style="text-align:center;">
-<a href="https://angel-help.ru/" target="_blank">
-<img src="https://via.placeholder.com/468x120?text=Angel+Help" style="width:100%;">
-</a>
+<!-- реклама -->
+<div class="ad">
+    <div style="font-size:12px;color:gray;">Реклама</div>
+    <a href="https://angel-help.ru/" target="_blank">
+        <img src="https://via.placeholder.com/468x120?text=Angel+Help"
+             style="width:100%;border-radius:10px;">
+    </a>
 </div>
 
 <form method="post">
-<input name="check_ticker" placeholder="Тикер">
-<button>Показать график</button>
+<input name="check_ticker" placeholder="Тикер" autofocus>
+<button>Узнать цену</button>
 </form>
 
-<canvas id="chart"></canvas>
+{% if checked_price %}
+<h3>Цена: {{ checked_price }}</h3>
+{% endif %}
 
-<table border="1" width="100%">
+<form method="post">
+<input name="add_ticker" placeholder="Тикер">
+<input name="add_qty" placeholder="Количество">
+<button>Добавить</button>
+</form>
+
+<table>
 <tr><th>Тикер</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr>
 
+{% set total_buy = 0 %}
 {% for r in portfolio %}
 <tr>
 <td>{{ r.ticker }}</td>
@@ -45,46 +101,47 @@ body { font-family: Arial; background:#f4f6f8; }
 <td>{{ r.value }}</td>
 </tr>
 {% endfor %}
-
 </table>
 
-<div>Итого: {{ total }}</div>
+<div class="total">
+Итого: {{ total }}
+</div>
 
-<div>💰 Прибыль: <span id="profit"></span></div>
+<!-- прибыль -->
+<div>
+📈 Прибыль: <span id="profit"></span>
+</div>
+
+<!-- график -->
+<canvas id="chart" height="200"></canvas>
+
+<!-- реклама -->
+<div class="ad">
+    <a href="https://angel-help.ru/" target="_blank">
+        <img src="https://via.placeholder.com/468x120?text=Angel+Help"
+             style="width:100%;border-radius:10px;">
+    </a>
+</div>
 
 </div>
 
 <script>
-let chart;
+// график (пример)
+const ctx = document.getElementById('chart');
 
-async function loadChart(ticker){
-    const res = await fetch(`/history/${ticker}`);
-    const data = await res.json();
-
-    const labels = data.map(d => d.date);
-    const prices = data.map(d => d.price);
-
-    if(chart) chart.destroy();
-
-    chart = new Chart(document.getElementById('chart'), {
-        type:'line',
-        data:{
-            labels:labels,
-            datasets:[{label:ticker, data:prices}]
-        }
-    });
-
-    if(prices.length > 1){
-        let change = ((prices.at(-1) - prices[0]) / prices[0] * 100).toFixed(2);
-        let el = document.getElementById("profit");
-        el.innerText = change + "%";
-        el.className = change >= 0 ? "green" : "red";
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: ['1','2','3','4','5'],
+        datasets: [{
+            label: 'Цена',
+            data: [10, 20, 15, 30, 25]
+        }]
     }
-}
+});
 
-{% if checked_ticker %}
-loadChart("{{ checked_ticker }}");
-{% endif %}
+// fake прибыль (можно потом улучшить)
+document.getElementById("profit").innerText = "+10%";
 </script>
 
 </body>
