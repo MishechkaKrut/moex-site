@@ -14,14 +14,16 @@ PORTFOLIO_FILE = "portfolio.json"
 with open("moex_tickers.txt", encoding="utf-8") as f:
     ALL_TICKERS = [line.strip().upper() for line in f if line.strip()]
 
-# ---------------- кэш цен ----------------
+# ---------------- кэш ----------------
 PRICE_CACHE = {}
-CACHE_TTL = 30  # секунд
+TICKER_CACHE = {"data": [], "ts": 0}
+CACHE_TTL = 60  # секунд
 
 # ---------------- функции ----------------
 def get_price(ticker):
-    """Возвращает цену тикера с кешированием (акции или ОФЗ)"""
     now = time.time()
+
+    # кэш цены
     if ticker in PRICE_CACHE and now - PRICE_CACHE[ticker]["ts"] < CACHE_TTL:
         return PRICE_CACHE[ticker]["price"]
 
@@ -29,11 +31,9 @@ def get_price(ticker):
         return None
 
     try:
-        if ticker.startswith("SU") and len(ticker) >= 7:
-            # ОФЗ
+        if ticker.startswith("SU"):
             url = f"{MOEX_API}/history/engines/stock/markets/bonds/boards/TQOB/securities/{ticker}.json"
         else:
-            # Акции
             url = f"{MOEX_API}/history/engines/stock/markets/shares/boards/TQBR/securities/{ticker}.json"
 
         r = requests.get(url, params={
@@ -41,7 +41,7 @@ def get_price(ticker):
             "sort_order": "desc",
             "sort_column": "TRADEDATE",
             "limit": 1
-        }, timeout=3)
+        }, timeout=2)
 
         data = r.json()
         if "history" not in data or not data["history"]["data"]:
@@ -52,11 +52,32 @@ def get_price(ticker):
             return None
 
         price = round(float(df.iloc[0]["CLOSE"]), 2)
+
         PRICE_CACHE[ticker] = {"price": price, "ts": now}
         return price
 
     except:
         return None
+
+
+# 🔥 КЭШИРОВАННЫЙ ТИКЕР (ускоряет сильно)
+def get_ticker_tape():
+    now = time.time()
+
+    if now - TICKER_CACHE["ts"] < CACHE_TTL:
+        return TICKER_CACHE["data"]
+
+    result = []
+    for t in ALL_TICKERS[:8]:  # было 30 → стало 8
+        p = get_price(t)
+        if p:
+            result.append({"ticker": t, "price": p})
+
+    TICKER_CACHE["data"] = result
+    TICKER_CACHE["ts"] = now
+
+    return result
+
 
 # ---------------- портфель ----------------
 def load_portfolio():
@@ -68,18 +89,20 @@ def load_portfolio():
             if not content:
                 return {}
             return json.loads(content)
-    except json.JSONDecodeError:
+    except:
         return {}
 
 def save_portfolio(data):
     with open(PORTFOLIO_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+
 # ---------------- автопоиск ----------------
 @app.route("/search")
 def search():
     q = request.args.get("q", "").upper()
     return jsonify([t for t in ALL_TICKERS if t.startswith(q)][:10])
+
 
 # ---------------- главная ----------------
 @app.route("/", methods=["GET", "POST"])
@@ -90,22 +113,20 @@ def index():
     error_message = None
 
     if request.method == "POST":
-        # Проверка цены
+
         if "check_ticker" in request.form:
             checked_ticker = request.form.get("check_ticker", "").upper().strip()
-            if checked_ticker:
-                if checked_ticker not in ALL_TICKERS:
-                    error_message = f"Тикера {checked_ticker} нет в списке MOEX"
-                    checked_price = None
-                else:
-                    checked_price = get_price(checked_ticker)
+            checked_price = get_price(checked_ticker)
 
-        # Добавление в портфель
+            if not checked_price:
+                error_message = f"Тикер {checked_ticker} не найден"
+
         if "add_ticker" in request.form:
             ticker = request.form.get("add_ticker", "").upper().strip()
             qty = request.form.get("add_qty", "0").strip()
+
             if ticker not in ALL_TICKERS:
-                error_message = f"Тикера {ticker} нет в списке MOEX"
+                error_message = f"Тикер {ticker} не найден"
             elif qty.isdigit() and int(qty) > 0:
                 portfolio[ticker] = portfolio.get(ticker, 0) + int(qty)
                 save_portfolio(portfolio)
@@ -114,6 +135,7 @@ def index():
     # ---------------- портфель ----------------
     rows = []
     total = 0
+
     for t, q in portfolio.items():
         price = get_price(t)
         if price:
@@ -126,13 +148,8 @@ def index():
                 "value": value
             })
 
-    # ---------------- бегущая строка ----------------
-    ticker_tape_data = []
-    # Берем первые 30 тикеров файла
-    for t in ALL_TICKERS[:30]:
-        p = get_price(t)
-        if p:
-            ticker_tape_data.append({"ticker": t, "price": p})
+    # 🔥 используем кэш
+    ticker_tape_data = get_ticker_tape()
 
     return render_template(
         "index.html",
@@ -144,6 +161,6 @@ def index():
         error_message=error_message
     )
 
+
 if __name__ == "__main__":
     app.run(debug=True)
-print("APP STARTED")
