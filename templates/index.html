@@ -13,7 +13,6 @@
     #suggestions {margin-top:10px;background:#0f172a;border-radius:10px;overflow:hidden;}
     .suggest-item {padding:10px;cursor:pointer;border-bottom:1px solid #1e293b;}
     .suggest-item:hover {background:#3b82f6;}
-    canvas {margin-top:20px;}
   </style>
 </head>
 <body>
@@ -37,7 +36,7 @@
   </div>
 
   <div class="card">
-    <h2>📈 График</h2>
+    <h2>📈 График (по месяцам)</h2>
     <canvas id="chart"></canvas>
   </div>
 </div>
@@ -58,10 +57,9 @@ let chart;
 async function loadData(){
   const ticker=document.getElementById('ticker').value.toUpperCase();
 
-  // ПРАВИЛЬНАЯ текущая цена
+  // цена
   const priceRes=await fetch(`https://iss.moex.com/iss/engines/stock/markets/shares/securities/${ticker}.json`);
   const priceData=await priceRes.json();
-
   const marketData=priceData.marketdata.data[0];
   const lastPrice=marketData ? (marketData[12] || marketData[24]) : null;
 
@@ -72,18 +70,31 @@ async function loadData(){
 
   price.textContent=`💰 ${ticker}: ${lastPrice}`;
 
-  // ГРАФИК
-  const res=await fetch(`https://iss.moex.com/iss/engines/stock/markets/shares/securities/${ticker}/candles.json?interval=24`);
+  // МЕСЯЧНЫЙ ГРАФИК
+  const res=await fetch(`https://iss.moex.com/iss/history/engines/stock/markets/shares/securities/${ticker}.json?from=2020-01-01`);
   const data=await res.json();
 
-  const candles=data.candles.data;
+  const history=data.history.data;
 
-  if(!candles || candles.length===0){
+  if(!history || history.length===0){
     return;
   }
 
-  const labels=candles.map(c=>c[6]);
-  const prices=candles.map(c=>c[4]);
+  // группируем по месяцам
+  const monthly={};
+
+  history.forEach(row=>{
+    const date=row[1];
+    const close=row[11];
+    if(!close) return;
+
+    const month=date.slice(0,7); // YYYY-MM
+
+    monthly[month]=close; // берём последнее значение месяца
+  });
+
+  const labels=Object.keys(monthly);
+  const prices=Object.values(monthly);
 
   if(chart) chart.destroy();
 
@@ -92,7 +103,6 @@ async function loadData(){
     data:{
       labels:labels,
       datasets:[{
-        label:ticker,
         data:prices,
         tension:0.4,
         fill:true
@@ -100,21 +110,18 @@ async function loadData(){
     },
     options:{
       plugins:{legend:{display:false}},
-      scales:{x:{display:false}}
+      scales:{x:{ticks:{color:'white'}},y:{ticks:{color:'white'}}}
     }
   });
 }
 
-// КРАСИВЫЙ AUTOSUGGEST
+// AUTOSUGGEST
 const popular=["SBER","GAZP","LKOH","ROSN","YNDX","VTBR","TCSG","MGNT"];
 
 function suggest(){
   const val=ticker.value.toUpperCase();
-
   if(!val){suggestions.innerHTML="";return;}
-
   const list=popular.filter(t=>t.includes(val));
-
   suggestions.innerHTML=list.map(t=>
     `<div class='suggest-item' onclick="selectTicker('${t}')">${t}</div>`
   ).join('');
