@@ -5,14 +5,24 @@
   <title>MOEX Tracker PRO</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body {font-family: Arial;background:#0f172a;color:white;margin:0;padding:20px;}
+    body {font-family: Inter, Arial, sans-serif;background:#0b1220;color:#e5e7eb;margin:0;padding:20px;}
     .container {max-width:1000px;margin:auto;}
-    .card {background:#1e293b;padding:20px;border-radius:16px;margin-bottom:20px;box-shadow:0 10px 30px rgba(0,0,0,0.3);}    
-    input {padding:12px;border-radius:10px;border:none;width:250px;}
-    button {padding:12px 16px;border-radius:10px;border:none;background:#3b82f6;color:white;cursor:pointer;}
-    #suggestions {margin-top:10px;background:#0f172a;border-radius:10px;overflow:hidden;}
-    .suggest-item {padding:10px;cursor:pointer;border-bottom:1px solid #1e293b;}
-    .suggest-item:hover {background:#3b82f6;}
+    .card {background:linear-gradient(180deg,#111827,#0b1220);padding:20px;border-radius:18px;margin-bottom:20px;box-shadow:0 10px 30px rgba(0,0,0,0.35);}    
+    input {padding:12px;border-radius:12px;border:none;width:250px;background:#0b1220;color:#e5e7eb;outline:1px solid #1f2937;}
+    button {padding:12px 16px;border-radius:12px;border:none;background:#2563eb;color:white;cursor:pointer;}
+    #suggestions {margin-top:10px;background:#0b1220;border-radius:12px;overflow:hidden;border:1px solid #1f2937;}
+    .suggest-item {padding:12px;cursor:pointer;border-bottom:1px solid #1f2937;}
+    .suggest-item:hover {background:#1f2937;}
+
+    /* TIME GRID */
+    .time-grid {display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:10px;}
+    .time-card {padding:16px;border-radius:16px;background:#0b1220;border:1px solid #1f2937;position:relative;overflow:hidden;}
+    .time-city {font-size:13px;color:#9ca3af;margin-bottom:6px;letter-spacing:.4px;}
+    .time-value {font-size:28px;font-weight:700;letter-spacing:1px;}
+    .time-seconds {font-size:14px;color:#60a5fa;margin-left:6px;}
+    .badge {position:absolute;top:10px;right:10px;font-size:11px;color:#93c5fd;background:rgba(37,99,235,.15);padding:4px 8px;border-radius:999px;border:1px solid #1d4ed8;}
+
+    canvas {margin-top:10px;}
   </style>
 </head>
 <body>
@@ -21,10 +31,12 @@
 
   <div class="card">
     <h2>🌍 Время</h2>
-    <p>Лондон: <span id="london"></span></p>
-    <p>Нью-Йорк: <span id="ny"></span></p>
-    <p>Москва: <span id="moscow"></span></p>
-    <p>Гонконг: <span id="hk"></span></p>
+    <div class="time-grid">
+      <div class="time-card"><div class="badge">UK</div><div class="time-city">Лондон</div><div><span id="london_hm" class="time-value"></span><span id="london_s" class="time-seconds"></span></div></div>
+      <div class="time-card"><div class="badge">US</div><div class="time-city">Нью-Йорк</div><div><span id="ny_hm" class="time-value"></span><span id="ny_s" class="time-seconds"></span></div></div>
+      <div class="time-card"><div class="badge">RU</div><div class="time-city">Москва</div><div><span id="moscow_hm" class="time-value"></span><span id="moscow_s" class="time-seconds"></span></div></div>
+      <div class="time-card"><div class="badge">HK</div><div class="time-city">Гонконг</div><div><span id="hk_hm" class="time-value"></span><span id="hk_s" class="time-seconds"></span></div></div>
+    </div>
   </div>
 
   <div class="card">
@@ -36,106 +48,87 @@
   </div>
 
   <div class="card">
-    <h2>📈 График (по месяцам)</h2>
+    <h2>📈 График (по месяцам, текущий год)</h2>
     <canvas id="chart"></canvas>
   </div>
 </div>
 
 <script>
-// TIME
-function updateTime(){
-  const opt={hour:'2-digit',minute:'2-digit',second:'2-digit'};
-  london.textContent=new Intl.DateTimeFormat('en-GB',{...opt,timeZone:'Europe/London'}).format(new Date());
-  ny.textContent=new Intl.DateTimeFormat('en-US',{...opt,timeZone:'America/New_York'}).format(new Date());
-  moscow.textContent=new Intl.DateTimeFormat('ru-RU',{...opt,timeZone:'Europe/Moscow'}).format(new Date());
-  hk.textContent=new Intl.DateTimeFormat('zh-HK',{...opt,timeZone:'Asia/Hong_Kong'}).format(new Date());
+// TIME (красивый формат HH:MM + секунды отдельно)
+function fmtParts(date, locale, tz){
+  const parts = new Intl.DateTimeFormat(locale, {
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: tz
+  }).formatToParts(date);
+  const get = t => parts.find(p=>p.type===t)?.value || '';
+  return { hm: `${get('hour')}:${get('minute')}`, s: get('second') };
 }
-setInterval(updateTime,1000);updateTime();
+
+function updateTime(){
+  const now = new Date();
+
+  let t = fmtParts(now,'en-GB','Europe/London');
+  london_hm.textContent = t.hm; london_s.textContent = t.s;
+
+  t = fmtParts(now,'en-US','America/New_York');
+  ny_hm.textContent = t.hm; ny_s.textContent = t.s;
+
+  t = fmtParts(now,'ru-RU','Europe/Moscow');
+  moscow_hm.textContent = t.hm; moscow_s.textContent = t.s;
+
+  t = fmtParts(now,'zh-HK','Asia/Hong_Kong');
+  hk_hm.textContent = t.hm; hk_s.textContent = t.s;
+}
+setInterval(updateTime,1000); updateTime();
 
 let chart;
 
 async function loadData(){
   const ticker=document.getElementById('ticker').value.toUpperCase();
 
-  // цена
   const priceRes=await fetch(`https://iss.moex.com/iss/engines/stock/markets/shares/securities/${ticker}.json`);
   const priceData=await priceRes.json();
   const marketData=priceData.marketdata.data[0];
   const lastPrice=marketData ? (marketData[12] || marketData[24]) : null;
 
-  if(!lastPrice){
-    price.textContent="Нет данных";
-    return;
-  }
-
+  if(!lastPrice){ price.textContent="Нет данных"; return; }
   price.textContent=`💰 ${ticker}: ${lastPrice}`;
 
-  // МЕСЯЧНЫЙ ГРАФИК
-  // текущий год
   const currentYear = new Date().getFullYear();
   const fromDate = `${currentYear}-01-01`;
 
   const res=await fetch(`https://iss.moex.com/iss/history/engines/stock/markets/shares/securities/${ticker}.json?from=${fromDate}`);
   const data=await res.json();
-
   const history=data.history.data;
+  if(!history || history.length===0){ return; }
 
-  if(!history || history.length===0){
-    return;
-  }
-
-  // группируем по месяцам
   const monthly={};
-
   history.forEach(row=>{
     const date=row[1];
     const close=row[11];
     if(!close) return;
-
-    const month=date.slice(0,7); // YYYY-MM
-
-    monthly[month]=close; // берём последнее значение месяца
+    const month=date.slice(0,7);
+    monthly[month]=close;
   });
 
   const labels=Object.keys(monthly);
   const prices=Object.values(monthly);
 
   if(chart) chart.destroy();
-
   chart=new Chart(document.getElementById('chart'),{
     type:'line',
-    data:{
-      labels:labels,
-      datasets:[{
-        data:prices,
-        tension:0.4,
-        fill:true
-      }]
-    },
-    options:{
-      plugins:{legend:{display:false}},
-      scales:{x:{ticks:{color:'white'}},y:{ticks:{color:'white'}}}
-    }
+    data:{ labels:labels, datasets:[{ data:prices, tension:0.4, fill:true }] },
+    options:{ plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#9ca3af'}}, y:{ticks:{color:'#9ca3af'}} } }
   });
 }
 
-// AUTOSUGGEST
 const popular=["SBER","GAZP","LKOH","ROSN","YNDX","VTBR","TCSG","MGNT"];
-
 function suggest(){
   const val=ticker.value.toUpperCase();
   if(!val){suggestions.innerHTML="";return;}
   const list=popular.filter(t=>t.includes(val));
-  suggestions.innerHTML=list.map(t=>
-    `<div class='suggest-item' onclick="selectTicker('${t}')">${t}</div>`
-  ).join('');
+  suggestions.innerHTML=list.map(t=> `<div class='suggest-item' onclick="selectTicker('${t}')">${t}</div>`).join('');
 }
-
-function selectTicker(t){
-  ticker.value=t;
-  suggestions.innerHTML="";
-  loadData();
-}
+function selectTicker(t){ ticker.value=t; suggestions.innerHTML=""; loadData(); }
 </script>
 </body>
 </html>
