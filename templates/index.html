@@ -5,54 +5,17 @@
   <title>MOEX Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body {
-      font-family: Arial;
-      background: #0f172a;
-      color: white;
-      margin: 0;
-      padding: 20px;
-    }
-
-    h1 {
-      text-align: center;
-    }
-
-    .container {
-      max-width: 1000px;
-      margin: auto;
-    }
-
-    .card {
-      background: #1e293b;
-      padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-    }
-
-    input, button {
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      margin-right: 10px;
-    }
-
-    button {
-      background: #3b82f6;
-      color: white;
-      cursor: pointer;
-    }
-
-    canvas {
-      margin-top: 20px;
-    }
+    body {font-family: Arial;background:#0f172a;color:white;margin:0;padding:20px;}
+    .container {max-width:1000px;margin:auto;}
+    .card {background:#1e293b;padding:20px;border-radius:12px;margin-bottom:20px;}
+    input,button {padding:10px;border-radius:8px;border:none;margin-right:10px;}
+    button {background:#3b82f6;color:white;cursor:pointer;}
   </style>
 </head>
 <body>
-
 <div class="container">
   <h1>📊 MOEX Tracker</h1>
 
-  <!-- TIME -->
   <div class="card">
     <h2>🌍 Время</h2>
     <p>Лондон: <span id="london"></span></p>
@@ -61,15 +24,14 @@
     <p>Гонконг: <span id="hk"></span></p>
   </div>
 
-  <!-- SEARCH -->
   <div class="card">
     <h2>🔍 Поиск акции</h2>
-    <input type="text" id="ticker" placeholder="Например: SBER">
+    <input type="text" id="ticker" placeholder="SBER" oninput="suggest()">
     <button onclick="loadData()">Загрузить</button>
+    <div id="suggestions"></div>
     <p id="price"></p>
   </div>
 
-  <!-- CHART -->
   <div class="card">
     <h2>📈 График</h2>
     <canvas id="chart"></canvas>
@@ -79,71 +41,64 @@
 <script>
 // TIME
 function updateTime() {
-  const options = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
-
-  document.getElementById('london').textContent =
-    new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'Europe/London' }).format(new Date());
-
-  document.getElementById('ny').textContent =
-    new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'America/New_York' }).format(new Date());
-
-  document.getElementById('moscow').textContent =
-    new Intl.DateTimeFormat('ru-RU', { ...options, timeZone: 'Europe/Moscow' }).format(new Date());
-
-  document.getElementById('hk').textContent =
-    new Intl.DateTimeFormat('zh-HK', { ...options, timeZone: 'Asia/Hong_Kong' }).format(new Date());
+  const opt={hour:'2-digit',minute:'2-digit',second:'2-digit'};
+  london.textContent=new Intl.DateTimeFormat('en-GB',{...opt,timeZone:'Europe/London'}).format(new Date());
+  ny.textContent=new Intl.DateTimeFormat('en-US',{...opt,timeZone:'America/New_York'}).format(new Date());
+  moscow.textContent=new Intl.DateTimeFormat('ru-RU',{...opt,timeZone:'Europe/Moscow'}).format(new Date());
+  hk.textContent=new Intl.DateTimeFormat('zh-HK',{...opt,timeZone:'Asia/Hong_Kong'}).format(new Date());
 }
-setInterval(updateTime, 1000);
-updateTime();
+setInterval(updateTime,1000);updateTime();
 
-
-// CHART
 let chart;
 
-async function loadData() {
-  const ticker = document.getElementById('ticker').value.toUpperCase();
+async function loadData(){
+  const ticker=document.getElementById('ticker').value.toUpperCase();
 
-  const url = `https://iss.moex.com/iss/history/engines/stock/markets/shares/securities/${ticker}.json`;
+  const url=`https://iss.moex.com/iss/engines/stock/markets/shares/securities/${ticker}/candles.json?interval=24`;
 
-  const res = await fetch(url);
-  const data = await res.json();
+  const res=await fetch(url);
+  const data=await res.json();
 
-  const history = data.history.data;
+  const candles=data.candles.data;
 
-  if (!history.length) {
-    document.getElementById('price').textContent = "Нет данных";
+  if(!candles || candles.length===0){
+    price.textContent="Нет данных";
     return;
   }
 
-  const labels = history.map(i => i[1]);
-  const prices = history.map(i => i[11]);
+  const labels=candles.map(c=>c[6]); // время
+  const prices=candles.map(c=>c[4]); // close
 
-  const lastPrice = prices[prices.length - 1];
-  document.getElementById('price').textContent = `Текущая цена: ${lastPrice}`;
+  price.textContent=`Текущая цена: ${prices.at(-1)}`;
 
-  if (chart) chart.destroy();
+  if(chart) chart.destroy();
 
-  const ctx = document.getElementById('chart');
-
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: ticker,
-        data: prices,
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { display: false }
-      }
+  chart=new Chart(document.getElementById('chart'),{
+    type:'line',
+    data:{
+      labels:labels,
+      datasets:[{label:ticker,data:prices,borderWidth:2}]
     }
   });
 }
-</script>
 
+// SIMPLE AUTOSUGGEST (локальный)
+const popular=["SBER","GAZP","LKOH","ROSN","YNDX","VTBR"];
+
+function suggest(){
+  const val=ticker.value.toUpperCase();
+  const list=popular.filter(t=>t.includes(val));
+
+  suggestions.innerHTML=list.map(t=>
+    `<div onclick="selectTicker('${t}')" style='cursor:pointer'>${t}</div>`
+  ).join('');
+}
+
+function selectTicker(t){
+  ticker.value=t;
+  suggestions.innerHTML="";
+  loadData();
+}
+</script>
 </body>
 </html>
