@@ -71,7 +71,11 @@ async function loadData(){
   price.textContent=`💰 ${ticker}: ${lastPrice}`;
 
   // МЕСЯЧНЫЙ ГРАФИК
-  const res=await fetch(`https://iss.moex.com/iss/history/engines/stock/markets/shares/securities/${ticker}.json?from=2020-01-01`);
+  // текущий год
+  const currentYear = new Date().getFullYear();
+  const fromDate = `${currentYear}-01-01`;
+
+  const res=await fetch(`https://iss.moex.com/iss/history/engines/stock/markets/shares/securities/${ticker}.json?from=${fromDate}`);
   const data=await res.json();
 
   const history=data.history.data;
