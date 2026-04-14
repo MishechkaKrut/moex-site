@@ -1,247 +1,148 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>MOEX Dashboard</title>
+  <meta charset="UTF-8">
+  <title>MOEX Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      margin: 0;
+      padding: 20px;
+    }
 
-    <style>
-        body {
-            font-family: Inter, Arial;
-            background:#f4f6f8;
-            margin:0;
-            padding-top:50px;
-        }
+    h1 {
+      text-align: center;
+    }
 
-        .ticker-wrapper {
-            position:fixed;
-            top:0;
-            width:100%;
-            height:44px;
-            background:#0f172a;
-            overflow:hidden;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-        }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
 
-        .ticker {
-            display:flex;
-            align-items:center;
-            animation:scroll 25s linear infinite;
-        }
+    .card {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
 
-        .ticker-item {
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:0 30px;
-            color:#e5e7eb;
-        }
+    input, button {
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      margin-right: 10px;
+    }
 
-        .ticker-price {
-            color:#22c55e;
-        }
+    button {
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
 
-        @keyframes scroll {
-            from { transform:translateX(0); }
-            to   { transform:translateX(-50%); }
-        }
-
-        .card {
-            background:white;
-            width:480px;
-            margin:40px auto;
-            padding:25px;
-            border-radius:14px;
-            box-shadow:0 10px 30px rgba(0,0,0,.08);
-        }
-
-        input, button {
-            width:100%;
-            padding:10px;
-            margin-top:8px;
-            font-size:15px;
-            border-radius:8px;
-            border:1px solid #ccc;
-        }
-
-        button {
-            background:#2563eb;
-            color:white;
-            border:none;
-            cursor:pointer;
-        }
-
-        table {
-            width:100%;
-            margin-top:20px;
-            border-collapse:collapse;
-        }
-
-        th, td {
-            padding:8px;
-            border-bottom:1px solid #e5e7eb;
-            text-align:center;
-        }
-
-        .total {
-            margin-top:15px;
-            font-weight:bold;
-            text-align:right;
-        }
-
-        h3 {
-            margin-top:15px;
-            text-align:center;
-            color:#2563eb;
-        }
-
-        .error {
-            color:#dc2626;
-            text-align:center;
-            margin-top:10px;
-        }
-
-        .suggestions {
-            position:absolute;
-            background:white;
-            border:1px solid #ccc;
-            width:100%;
-            max-height:150px;
-            overflow-y:auto;
-            z-index:100;
-            list-style:none;
-            padding:0;
-            margin:0;
-        }
-
-        .suggestions li {
-            padding:8px;
-            cursor:pointer;
-        }
-
-        .suggestions li:hover {
-            background:#f1f5f9;
-        }
-
-        .search-box {
-            position:relative;
-            margin-bottom:10px;
-        }
-    </style>
+    canvas {
+      margin-top: 20px;
+    }
+  </style>
 </head>
-
 <body>
 
-<div class="ticker-wrapper">
-    <div class="ticker">
-        {% for i in ticker_tape %}
-        <div class="ticker-item">
-            {{ i.ticker }}
-            <span class="ticker-price">{{ i.price }}</span>
-        </div>
-        {% endfor %}
+<div class="container">
+  <h1>📊 MOEX Tracker</h1>
 
-        {% for i in ticker_tape %}
-        <div class="ticker-item">
-            {{ i.ticker }}
-            <span class="ticker-price">{{ i.price }}</span>
-        </div>
-        {% endfor %}
-    </div>
-</div>
+  <!-- TIME -->
+  <div class="card">
+    <h2>🌍 Время</h2>
+    <p>Лондон: <span id="london"></span></p>
+    <p>Нью-Йорк: <span id="ny"></span></p>
+    <p>Москва: <span id="moscow"></span></p>
+    <p>Гонконг: <span id="hk"></span></p>
+  </div>
 
-<div class="card">
+  <!-- SEARCH -->
+  <div class="card">
+    <h2>🔍 Поиск акции</h2>
+    <input type="text" id="ticker" placeholder="Например: SBER">
+    <button onclick="loadData()">Загрузить</button>
+    <p id="price"></p>
+  </div>
 
-    <h2>Портфель MOEX</h2>
-
-    <form method="post" class="search-box">
-        <input id="check_ticker" name="check_ticker" placeholder="Введите тикер" autocomplete="off">
-        <ul id="check_suggestions" class="suggestions"></ul>
-        <button>Узнать цену</button>
-    </form>
-
-    {% if checked_ticker %}
-    <h3>Цена {{ checked_ticker }}: {{ checked_price }}</h3>
-    {% endif %}
-
-    {% if error_message %}
-    <div class="error">{{ error_message }}</div>
-    {% endif %}
-
-    <form method="post" class="search-box">
-        <input id="add_ticker" name="add_ticker" placeholder="Тикер" autocomplete="off">
-        <ul id="add_suggestions" class="suggestions"></ul>
-        <input name="add_qty" placeholder="Количество">
-        <button>Добавить в портфель</button>
-    </form>
-
-    <table>
-        <tr>
-            <th>Тикер</th>
-            <th>Кол-во</th>
-            <th>Цена</th>
-            <th>Сумма</th>
-        </tr>
-
-        {% for r in portfolio %}
-        <tr>
-            <td>{{ r.ticker }}</td>
-            <td>{{ r.qty }}</td>
-            <td>{{ r.price }}</td>
-            <td>{{ r.value }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-
-    <div class="total">Итого: {{ total }}</div>
-
-    <!-- ===== РЕКЛАМНЫЙ БАННЕР ===== -->
-    <div style="margin-top:20px;">
-        <div style="font-size:12px; color:#9ca3af; text-align:center;">
-            Реклама
-        </div>
-
-        <a href="https://angel-help.ru/" target="_blank">
-            <img src="https://via.placeholder.com/468x120?text=Angel+Help"
-                 style="
-                    width:100%;
-                    border-radius:12px;
-                    margin-top:8px;
-                    box-shadow:0 4px 15px rgba(0,0,0,0.1);
-                 ">
-        </a>
-    </div>
-
+  <!-- CHART -->
+  <div class="card">
+    <h2>📈 График</h2>
+    <canvas id="chart"></canvas>
+  </div>
 </div>
 
 <script>
-    function setupAutocomplete(inputId, listId) {
-        const input = document.getElementById(inputId);
-        const suggestions = document.getElementById(listId);
+// TIME
+function updateTime() {
+  const options = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
 
-        input.addEventListener("input", async () => {
-            suggestions.innerHTML = "";
-            const q = input.value.trim();
-            if (!q) return;
+  document.getElementById('london').textContent =
+    new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'Europe/London' }).format(new Date());
 
-            const res = await fetch(`/search?q=${q}`);
-            const data = await res.json();
+  document.getElementById('ny').textContent =
+    new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'America/New_York' }).format(new Date());
 
-            data.forEach(t => {
-                const li = document.createElement("li");
-                li.textContent = t;
-                li.onclick = () => {
-                    input.value = t;
-                    suggestions.innerHTML = "";
-                };
-                suggestions.appendChild(li);
-            });
-        });
+  document.getElementById('moscow').textContent =
+    new Intl.DateTimeFormat('ru-RU', { ...options, timeZone: 'Europe/Moscow' }).format(new Date());
+
+  document.getElementById('hk').textContent =
+    new Intl.DateTimeFormat('zh-HK', { ...options, timeZone: 'Asia/Hong_Kong' }).format(new Date());
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+
+// CHART
+let chart;
+
+async function loadData() {
+  const ticker = document.getElementById('ticker').value.toUpperCase();
+
+  const url = `https://iss.moex.com/iss/history/engines/stock/markets/shares/securities/${ticker}.json`;
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  const history = data.history.data;
+
+  if (!history.length) {
+    document.getElementById('price').textContent = "Нет данных";
+    return;
+  }
+
+  const labels = history.map(i => i[1]);
+  const prices = history.map(i => i[11]);
+
+  const lastPrice = prices[prices.length - 1];
+  document.getElementById('price').textContent = `Текущая цена: ${lastPrice}`;
+
+  if (chart) chart.destroy();
+
+  const ctx = document.getElementById('chart');
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: ticker,
+        data: prices,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { display: false }
+      }
     }
-
-    setupAutocomplete("check_ticker", "check_suggestions");
-    setupAutocomplete("add_ticker", "add_suggestions");
+  });
+}
 </script>
 
 </body>
