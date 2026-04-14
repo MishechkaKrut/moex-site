@@ -2,19 +2,23 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>MOEX Tracker</title>
+  <title>MOEX Tracker PRO</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {font-family: Arial;background:#0f172a;color:white;margin:0;padding:20px;}
     .container {max-width:1000px;margin:auto;}
-    .card {background:#1e293b;padding:20px;border-radius:12px;margin-bottom:20px;}
-    input,button {padding:10px;border-radius:8px;border:none;margin-right:10px;}
-    button {background:#3b82f6;color:white;cursor:pointer;}
+    .card {background:#1e293b;padding:20px;border-radius:16px;margin-bottom:20px;box-shadow:0 10px 30px rgba(0,0,0,0.3);}    
+    input {padding:12px;border-radius:10px;border:none;width:250px;}
+    button {padding:12px 16px;border-radius:10px;border:none;background:#3b82f6;color:white;cursor:pointer;}
+    #suggestions {margin-top:10px;background:#0f172a;border-radius:10px;overflow:hidden;}
+    .suggest-item {padding:10px;cursor:pointer;border-bottom:1px solid #1e293b;}
+    .suggest-item:hover {background:#3b82f6;}
+    canvas {margin-top:20px;}
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>📊 MOEX Tracker</h1>
+  <h1>📊 MOEX Tracker PRO</h1>
 
   <div class="card">
     <h2>🌍 Время</h2>
@@ -29,7 +33,7 @@
     <input type="text" id="ticker" placeholder="SBER" oninput="suggest()">
     <button onclick="loadData()">Загрузить</button>
     <div id="suggestions"></div>
-    <p id="price"></p>
+    <h3 id="price"></h3>
   </div>
 
   <div class="card">
@@ -40,7 +44,7 @@
 
 <script>
 // TIME
-function updateTime() {
+function updateTime(){
   const opt={hour:'2-digit',minute:'2-digit',second:'2-digit'};
   london.textContent=new Intl.DateTimeFormat('en-GB',{...opt,timeZone:'Europe/London'}).format(new Date());
   ny.textContent=new Intl.DateTimeFormat('en-US',{...opt,timeZone:'America/New_York'}).format(new Date());
@@ -54,22 +58,32 @@ let chart;
 async function loadData(){
   const ticker=document.getElementById('ticker').value.toUpperCase();
 
-  const url=`https://iss.moex.com/iss/engines/stock/markets/shares/securities/${ticker}/candles.json?interval=24`;
+  // ПРАВИЛЬНАЯ текущая цена
+  const priceRes=await fetch(`https://iss.moex.com/iss/engines/stock/markets/shares/securities/${ticker}.json`);
+  const priceData=await priceRes.json();
 
-  const res=await fetch(url);
+  const marketData=priceData.marketdata.data[0];
+  const lastPrice=marketData ? (marketData[12] || marketData[24]) : null;
+
+  if(!lastPrice){
+    price.textContent="Нет данных";
+    return;
+  }
+
+  price.textContent=`💰 ${ticker}: ${lastPrice}`;
+
+  // ГРАФИК
+  const res=await fetch(`https://iss.moex.com/iss/engines/stock/markets/shares/securities/${ticker}/candles.json?interval=24`);
   const data=await res.json();
 
   const candles=data.candles.data;
 
   if(!candles || candles.length===0){
-    price.textContent="Нет данных";
     return;
   }
 
-  const labels=candles.map(c=>c[6]); // время
-  const prices=candles.map(c=>c[4]); // close
-
-  price.textContent=`Текущая цена: ${prices.at(-1)}`;
+  const labels=candles.map(c=>c[6]);
+  const prices=candles.map(c=>c[4]);
 
   if(chart) chart.destroy();
 
@@ -77,20 +91,32 @@ async function loadData(){
     type:'line',
     data:{
       labels:labels,
-      datasets:[{label:ticker,data:prices,borderWidth:2}]
+      datasets:[{
+        label:ticker,
+        data:prices,
+        tension:0.4,
+        fill:true
+      }]
+    },
+    options:{
+      plugins:{legend:{display:false}},
+      scales:{x:{display:false}}
     }
   });
 }
 
-// SIMPLE AUTOSUGGEST (локальный)
-const popular=["SBER","GAZP","LKOH","ROSN","YNDX","VTBR"];
+// КРАСИВЫЙ AUTOSUGGEST
+const popular=["SBER","GAZP","LKOH","ROSN","YNDX","VTBR","TCSG","MGNT"];
 
 function suggest(){
   const val=ticker.value.toUpperCase();
+
+  if(!val){suggestions.innerHTML="";return;}
+
   const list=popular.filter(t=>t.includes(val));
 
   suggestions.innerHTML=list.map(t=>
-    `<div onclick="selectTicker('${t}')" style='cursor:pointer'>${t}</div>`
+    `<div class='suggest-item' onclick="selectTicker('${t}')">${t}</div>`
   ).join('');
 }
 
